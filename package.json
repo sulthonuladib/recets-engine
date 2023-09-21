@@ -5,7 +5,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start:sender:binance": "tsc && node dist/sender.js",
+    "start:converter": "tsc && node dist/price-convert.js",
+    "start:search": "tsc && node dist/price-search.js",
   },
   "keywords": [],
   "author": "",
