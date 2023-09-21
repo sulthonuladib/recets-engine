@@ -1,6 +1,9 @@
 import { Schema, createConnection } from "mongoose";
 
-const DB_URL = `mongodb://root:123456@192.168.1.3:27018/ticker_db?authSource=admin`;
+// NOTE: you can use your own database for your subscription list
+const DB_URL = process.env.MONGO_URL;
+if (!DB_URL) throw new Error("MONGO_URL is not defined");
+
 const schema = new Schema({
     symbol: { type: String, required: true, unique: true },
     binance: { type: Boolean, default: false },

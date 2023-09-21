@@ -1,4 +1,5 @@
 import client from "amqplib";
+import { createClient } from "redis";
 
 import {
     Order,
@@ -56,11 +57,19 @@ class ConverterFactory {
     }
 }
 
-const connection = await client.connect("amqp://localhost:5672");
+const REDIS_URL = process.env.REDIS_URL
+const AMQP_URL = process.env.AMQP_URL
+if (!REDIS_URL) throw new Error("REDIS_URL is not defined");
+if (!AMQP_URL) throw new Error("AMQP_URL is not defined");
+
+const redis = createClient({ url: REDIS_URL });
+const connection = await client.connect(AMQP_URL);
 const consumer = await connection.createChannel();
 
 const producer = await connection.createChannel();
 await producer.assertQueue("search-service");
+
+await redis.connect();
 
 await consumer.consume("convert-service", (message) => {
     if (!message) return;
@@ -70,6 +79,7 @@ await consumer.consume("convert-service", (message) => {
     } & RawOrderbook;
     const factory = ConverterFactory.create(payload.exchange);
     const result = factory.convert(payload);
+    console.log(result);
 
     consumer.ack(message);
     producer.sendToQueue("search-service", Buffer.from(JSON.stringify({
