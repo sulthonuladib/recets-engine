@@ -1,5 +1,5 @@
 import client from "amqplib";
-import { createClient } from "redis";
+import { RedisClientType, createClient } from "redis";
 
 import {
     Order,
@@ -10,36 +10,63 @@ import {
     RawOrder,
 } from "./types";
 
+const REDIS_URL = process.env.REDIS_URL
+if (!REDIS_URL) throw new Error("REDIS_URL is not defined");
+const AMQP_URL = process.env.AMQP_URL
+if (!AMQP_URL) throw new Error("AMQP_URL is not defined");
+const BASE_CURRENCY = process.env.BASE_CURRENCY
+if (!BASE_CURRENCY) throw new Error("BASE_CURRENCY is not defined");
+
+console.log("[CONVERTER] BASE_CURRENCY", BASE_CURRENCY);
+
+const redis = createClient({ url: REDIS_URL });
+const connection = await client.connect(AMQP_URL);
+console.log("[CONVERTER] Connected to AMQP");
+
+const consumer = await connection.createChannel();
+
+const producer = await connection.createChannel();
+await producer.assertQueue("search-service");
+
+await redis.connect();
+console.log("[CONVERTER] Connected to Redis");
+
 export enum Exchange {
     Binance = "binance",
     Indodax = "indodax",
 }
 
 interface ConverterStrategy {
-    modify(order: Array<RawOrder>): Array<Order>;
-    convert(orderbook: RawOrderbook): Orderbook;
+    modify(order: Array<RawOrder>): Promise<Array<Order>>;
+    convert(orderbook: RawOrderbook): Promise<Orderbook>;
 }
 
 class BinanceConverterStrategy implements ConverterStrategy {
-    convert(orderbook: BinanceRawOrderbook): Orderbook {
+    async convert(orderbook: BinanceRawOrderbook): Promise<Orderbook> {
         return {
-            bids: this.modify(orderbook.bids),
-            asks: this.modify(orderbook.asks),
+            bids: await this.modify(orderbook.bids),
+            asks: await this.modify(orderbook.asks),
         };
     }
 
-    modify(orders: Array<BinanceRawOrder>): Array<Order> {
+    async modify(orders: Array<BinanceRawOrder>): Promise<Array<Order>> {
+        // NOTE: can use your own base currency trade pair
+        const BASE_CURRENCY_PRICE = await redis.get(BASE_CURRENCY as string)
+        if (!BASE_CURRENCY_PRICE) throw new Error("BASE_CURRENCY source not available");
         return orders.map(([price, amount]) => {
-            return [parseFloat(price), parseFloat(amount)];
+            const priceInIDR = +price * +BASE_CURRENCY_PRICE!;
+            const amountInIDR = +amount * priceInIDR;
+
+            return [priceInIDR, amountInIDR];
         });
     }
 }
 
 class IndodaxConverterStrategy implements ConverterStrategy {
-    modify(_order: RawOrder[]): Order[] {
+    modify(order: RawOrder[]): Promise<Order[]> {
         throw new Error("Method not implemented.");
     }
-    convert(_orderbook: RawOrderbook): Orderbook {
+    convert(orderbook: RawOrderbook): Promise<Orderbook> {
         throw new Error("Method not implemented.");
     }
 }
@@ -57,29 +84,17 @@ class ConverterFactory {
     }
 }
 
-const REDIS_URL = process.env.REDIS_URL
-const AMQP_URL = process.env.AMQP_URL
-if (!REDIS_URL) throw new Error("REDIS_URL is not defined");
-if (!AMQP_URL) throw new Error("AMQP_URL is not defined");
+console.log("[CONVERTER] Started");
 
-const redis = createClient({ url: REDIS_URL });
-const connection = await client.connect(AMQP_URL);
-const consumer = await connection.createChannel();
-
-const producer = await connection.createChannel();
-await producer.assertQueue("search-service");
-
-await redis.connect();
-
-await consumer.consume("convert-service", (message) => {
+await consumer.consume("convert-service", async (message) => {
     if (!message) return;
     const payload = JSON.parse(message.content.toString()) as {
         coin: string;
         exchange: Exchange;
     } & RawOrderbook;
     const factory = ConverterFactory.create(payload.exchange);
-    const result = factory.convert(payload);
-    console.log(result);
+    const result = await factory.convert(payload);
+    console.log(`[${payload.exchange}]:[${payload.coin}]`, result);
 
     consumer.ack(message);
     producer.sendToQueue("search-service", Buffer.from(JSON.stringify({
