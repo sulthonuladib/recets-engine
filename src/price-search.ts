@@ -52,6 +52,7 @@ await consumer.consume(consumerChannelName, (message) => {
     const { exchange, coin, orderbook } = JSON.parse(
         message.content.toString()
     ) as SearchPayload;
+    consumer.ack(message);
     const result = searchService.execute(orderbook);
     console.log(`[${exchange}]:[${coin}] ${JSON.stringify(result)}`);
 });
