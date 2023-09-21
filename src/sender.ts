@@ -30,6 +30,7 @@ const subs = coins
     })
     .join("/");
 
+console.log("[SENDER:BINANCE] subscribtion", coins.map((coin) => coin.symbol), coins.length);
 import { BinanceRawOrderbook } from "./types";
 import client from "amqplib";
 
@@ -40,6 +41,12 @@ type Message = {
     data: BinanceRawOrderbook;
 };
 
+console.log("[SENDER:BINANCE] Connecting to WebSocket");
+console.log(
+    "[SENDER:BINANCE] Subscribe to",
+    "\n" + coins.map((coin) => coin.symbol).join(","),
+    "\n[SENDER:BINANCE] Total coins: " + coins.length.toString()
+);
 const socket = new WebSocket(
     "wss://stream.binance.com:9443/stream?streams=" + subs
 );
@@ -47,15 +54,14 @@ const connection = await client.connect("amqp://localhost:5672");
 const channel = await connection.createChannel();
 await channel.assertQueue("convert-service");
 
-socket.on("open", function () {
-    console.log("Connected to WebSocket");
+socket.on("open", function() {
+    console.log("[SENDER:BINANCE] Connected to WebSocket");
 });
 
-socket.on("message", function (event) {
-    console.log(event);
+socket.on("message", function(event) {
     const message = parseMessage(event);
     if (!message) {
-        console.error("Failed to parse message");
+        console.error("[SENDER:BINANCE] Failed to parse message");
         return;
     }
     const coin = message.stream.split("@").shift()!.split("usdt").shift()!;
@@ -72,21 +78,21 @@ socket.on("message", function (event) {
     );
 });
 
-socket.on("close", function () {
-    console.log("Disconnected from WebSocket");
+socket.on("close", function() {
+    console.log("[SENDER:BINANCE] Disconnected from WebSocket");
 });
 
-socket.on("error", function () {
-    console.log("Error from WebSocket");
+socket.on("error", function() {
+    console.log("[SENDER:BINANCE] Error from WebSocket");
 });
 
-socket.on("ping", function () {
-    console.log("Ping from WebSocket");
+socket.on("ping", function() {
+    console.log("[SENDER:BINANCE] Ping from WebSocket");
     socket.pong();
 });
 
-setInterval(function () {
-    console.log("Sending ping to WebSocket");
+setInterval(function() {
+    console.log("[SENDER:BINANCE] Sending ping to WebSocket");
     socket.ping();
 }, 30000);
 

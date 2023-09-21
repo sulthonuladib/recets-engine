@@ -47,6 +47,9 @@ const consumerChannelName = "search-service";
 const connection = await client.connect("amqp://localhost:5672");
 const consumer = await connection.createChannel();
 
+console.log("[SEARCH] Connected to AMQP");
+console.log("[SEARCH] Started");
+
 await consumer.consume(consumerChannelName, (message) => {
     if (!message) return;
     const { exchange, coin, orderbook } = JSON.parse(
@@ -54,5 +57,5 @@ await consumer.consume(consumerChannelName, (message) => {
     ) as SearchPayload;
     consumer.ack(message);
     const result = searchService.execute(orderbook);
-    console.log(`[${exchange}]:[${coin}] ${JSON.stringify(result)}`);
+    console.log(`[${exchange}]:[${coin}] `, result);
 });
