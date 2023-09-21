@@ -24,6 +24,7 @@ const connection = await client.connect(AMQP_URL);
 console.log("[CONVERTER] Connected to AMQP");
 
 const consumer = await connection.createChannel();
+await consumer.assertQueue("convert-service");
 
 const producer = await connection.createChannel();
 await producer.assertQueue("search-service");
