@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start:sender:binance": "tsc && node dist/sender.js",
+    "start:sender:binance": "tsc && node --env-file .env dist/sender.js",
     "start:converter": "tsc && node --env-file .env dist/price-convert.js",
     "start:search": "tsc && node --env-file .env dist/price-search.js"
   },
