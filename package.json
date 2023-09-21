@@ -8,8 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start:sender:binance": "tsc && node dist/sender.js",
-    "start:converter": "tsc && node dist/price-convert.js",
-    "start:search": "tsc && node dist/price-search.js",
+    "start:converter": "tsc && node --env-file .env dist/price-convert.js",
+    "start:search": "tsc && node --env-file .env dist/price-search.js"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +25,7 @@
     "@types/ws": "^8.5.5",
     "amqplib": "^0.10.3",
     "mongoose": "^7.5.2",
+    "redis": "^4.6.9",
     "ws": "^8.14.2"
   }
 }
