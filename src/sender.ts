@@ -1,6 +1,8 @@
-import { Schema, createConnection } from "mongoose";
+// import { Schema, createConnection } from "mongoose";
+import { WebSocket } from "ws";
 
 // NOTE: you can use your own database for your subscription list
+/*
 const DB_URL = process.env.MONGO_URL;
 if (!DB_URL) throw new Error("MONGO_URL is not defined");
 
@@ -30,11 +32,17 @@ const subs = coins
     })
     .join("/");
 
+*/
+const coins = [{ symbol: 'btc' } ]
+const subs = coins
+    .map((coin) => {
+        return `${coin.symbol}usdt@depth20@100ms`;
+    })
+    .join("/");
+
 console.log("[SENDER:BINANCE] subscribtion", coins.map((coin) => coin.symbol), coins.length);
 import { BinanceRawOrderbook } from "./types";
 import client from "amqplib";
-
-import WebSocket, { RawData } from "ws";
 
 type Message = {
     stream: string;
@@ -50,15 +58,26 @@ console.log(
 const socket = new WebSocket(
     "wss://stream.binance.com:9443/stream?streams=" + subs
 );
+/*
 const connection = await client.connect("amqp://localhost:5672");
 const channel = await connection.createChannel();
 await channel.assertQueue("convert-service");
+*/
 
-socket.on("open", function() {
+
+socket.addEventListener("open", function() {
     console.log("[SENDER:BINANCE] Connected to WebSocket");
 });
 
-socket.on("message", function(event) {
+socket.addEventListener("message", function(event) {
+  try {
+
+    console.log(JSON.parse(event.data as string));
+  } catch (error) {
+    console.log("ERROR: ", error);
+
+  }
+    /*
     const message = parseMessage(event);
     if (!message) {
         console.error("[SENDER:BINANCE] Failed to parse message");
@@ -76,17 +95,18 @@ socket.on("message", function(event) {
             })
         )
     );
+    */
 });
 
-socket.on("close", function() {
+socket.addEventListener("close", function() {
     console.log("[SENDER:BINANCE] Disconnected from WebSocket");
 });
 
-socket.on("error", function() {
+socket.addEventListener("error", function() {
     console.log("[SENDER:BINANCE] Error from WebSocket");
 });
 
-socket.on("ping", function() {
+socket.addEventListener("ping", function() {
     console.log("[SENDER:BINANCE] Ping from WebSocket");
     socket.pong();
 });
@@ -96,7 +116,7 @@ setInterval(function() {
     socket.ping();
 }, 30000);
 
-function parseMessage(message: RawData): Message | null {
+function parseMessage(message: MessageEvent<string | Buffer>): Message | null {
     try {
         const result = JSON.parse(message.toString());
         return result;

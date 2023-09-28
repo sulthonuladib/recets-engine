@@ -22,3 +22,22 @@ export type Orderbook = {
     bids: Order[],
     asks: Order[],
 }
+
+export type SearchResult = {
+    buyPrice: number;
+    buyAmount: number;
+    sellPrice: number;
+    sellAmount: number;
+};
+
+export type SearchPayload = {
+    coin: string;
+    exchange: Exchange;
+    orderbook: Orderbook
+}
+
+export enum Exchange {
+    Binance = "binance",
+    Indodax = "indodax",
+}
+

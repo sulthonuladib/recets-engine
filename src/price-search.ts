@@ -1,47 +1,8 @@
 import client from 'amqplib';
 import { Kafka } from 'kafkajs';
 
-import { Order, Orderbook } from "./types";
-import { Exchange } from './price-convert';
-
-type SearchResult = {
-    buyPrice: number;
-    buyAmount: number;
-    sellPrice: number;
-    sellAmount: number;
-};
-
-type SearchPayload = {
-    coin: string;
-    exchange: Exchange;
-    orderbook: Orderbook
-}
-
-class SearchService {
-    constructor(public target: number) { }
-
-    public execute(orderbook: Orderbook): SearchResult {
-        const [buyPrice, buyAmount] = this.search(orderbook.asks);
-        const [sellPrice, sellAmount] = this.search(orderbook.bids);
-
-        return { buyPrice, buyAmount, sellPrice, sellAmount };
-    }
-
-    private search(orders: Array<Order>): Order {
-        let price: number = 0;
-        let amount: number = 0;
-
-        for (const [currentPrice, currentAmount] of orders) {
-            price = currentPrice;
-            amount += currentAmount;
-            if (currentAmount >= this.target) {
-                break;
-            }
-        }
-
-        return [price, amount];
-    }
-}
+import { SearchPayload } from './types';
+import SearchService from './services/price-search.service';
 
 const target = 100;
 const searchService = new SearchService(target);
